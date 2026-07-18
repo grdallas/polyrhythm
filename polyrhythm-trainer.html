@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Polyrhythm Trainer — The Practice Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --paper:      #f5f0e8;
+  --paper-dark: #ece4d0;
+  --ink:        #1a1510;
+  --ink-light:  #3d2e1e;
+  --ink-muted:  #7a6a56;
+  --border:     #c8b89a;
+  --amber:      #c8841a;
+  --a:          #c8841a;   /* voice A */
+  --b:          #1a5c2a;   /* voice B */
+  --coin:       #1a1510;   /* coincidence */
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Libre Baskerville', serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 16px 60px;
+  overflow-x: hidden;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 32px;
+  position: relative; z-index:1;
+}
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(30px,5vw,48px);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.subtitle {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  margin-top: 6px;
+}
+
+/* ── Main layout ── */
+.main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 700px;
+  position: relative; z-index:1;
+}
+
+/* ── Necklace canvas ── */
+.canvas-wrap {
+  position: relative;
+  width: min(480px, 90vw);
+  height: min(480px, 90vw);
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+}
+
+/* ── Ratio display ── */
+.ratio-display {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(52px,12vw,88px);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.ratio-a { color: var(--a); }
+.ratio-colon { color: var(--ink-muted); font-size: 0.6em; }
+.ratio-b { color: var(--b); }
+
+.ratio-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  letter-spacing: 0.03em;
+  text-align: center;
+  margin-top: -8px;
+  font-style: italic;
+}
+
+/* ── Ratio selector ── */
+.ratio-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  width: 100%;
+}
+.ratio-btn {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  padding: 10px 6px;
+  cursor: pointer;
+  transition: all .15s;
+  border-radius: 2px;
+  text-align: center;
+}
+.ratio-btn:hover { border-color: var(--ink); color: var(--ink); }
+.ratio-btn.selected { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* ── Beat grid ── */
+.beat-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+.beat-label {
+  font-family: 'Playfair Display', serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  width: 20px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.beat-label.a { color: var(--a); }
+.beat-label.b { color: var(--b); }
+.beat-pips {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  align-items: center;
+}
+.pip {
+  flex: 1;
+  height: 20px;
+  background: var(--border);
+  transition: background .06s, transform .06s;
+  position: relative;
+}
+.pip.hit-a { background: var(--a); transform: scaleY(1.5); }
+.pip.hit-b { background: var(--b); transform: scaleY(1.5); }
+.pip.coin  { background: var(--coin); transform: scaleY(2); }
+
+/* ── Controls ── */
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+}
+button {
+  background: var(--paper);
+  border: 1px solid var(--border);
+  color: var(--ink-muted);
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all .15s;
+  border-radius: 2px;
+}
+button:hover { border-color: var(--ink); color: var(--ink); }
+button.primary { border-color: var(--amber); color: var(--amber); background: rgba(200,132,26,.06); }
+button.primary:hover { background: var(--amber); color: var(--paper); }
+button.muted { opacity: .4; border-style: dashed; }
+button.muted:hover { opacity: .8; }
+button.active-mute { border-color: var(--b); color: var(--b); background: rgba(26,92,42,.06); }
+
+.slider-row {
+  display: flex; align-items: center; gap: 8px;
+  font-family: 'Libre Baskerville', serif;
+  font-size: 0.7rem; color: var(--ink-muted); letter-spacing: 0.04em;
+}
+input[type=range] {
+  -webkit-appearance: none; width: 90px; height: 2px;
+  background: var(--ink); outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  background: var(--ink); border-radius: 50%; cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 16px; height: 16px;
+  background: var(--ink); border-radius: 50%; cursor: pointer; border: none;
+}
+
+/* ── Mute panel ── */
+.mute-row {
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+}
+.mute-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 16px; font-size: 0.7rem; letter-spacing: 0.04em;
+  transition: all .15s;
+}
+.mute-dot { width: 8px; height: 8px; border-radius: 50%; }
+.mute-dot.a { background: var(--a); }
+.mute-dot.b { background: var(--b); }
+.mute-btn.muted { opacity: .4; }
+
+/* ── Info panel ── */
+.info-panel {
+  width: 100%;
+  background: var(--paper-dark);
+  border: 1px solid var(--border);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+}
+.info-item { display: flex; flex-direction: column; gap: 3px; }
+.info-key { font-family: 'Libre Baskerville', serif; font-size: 0.62rem; color: var(--ink-muted); letter-spacing: 0.08em; text-transform: uppercase; }
+.info-val { color: var(--ink); font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 0.95rem; }
+
+/* ── Coincidence flash ── */
+@keyframes coin-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(200,132,26,.6); }
+  50%  { box-shadow: 0 0 32px 8px rgba(200,132,26,.25); }
+  100% { box-shadow: 0 0 0 0 rgba(200,132,26,0); }
+}
+.canvas-wrap.coincidence { animation: coin-flash .3s ease-out; }
+
+.cycle-counter {
+  font-family: 'Cormorant Garamond', serif;
+  font-style: italic;
+  font-size: 0.72rem; color: var(--ink-muted); letter-spacing: 0.04em;
+  text-align: center;
+}
+
+@media(max-width:500px) {
+  .ratio-grid { grid-template-columns: repeat(3,1fr); }
+  .info-panel { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">Polyrhythm</div>
+  <div class="subtitle">Rhythmic Superimposition Trainer</div>
+</header>
+
+<div class="main">
+
+  <!-- Big ratio display -->
+  <div style="text-align:center">
+    <div class="ratio-display">
+      <span class="ratio-a" id="disp-a">3</span>
+      <span class="ratio-colon">:</span>
+      <span class="ratio-b" id="disp-b">2</span>
+    </div>
+    <div class="ratio-name" id="ratio-name">Hemiola — the foundation of all swing</div>
+  </div>
+
+  <!-- Necklace canvas -->
+  <div class="canvas-wrap" id="canvas-wrap">
+    <canvas id="c" width="480" height="480"></canvas>
+  </div>
+
+  <!-- Beat pip rows -->
+  <div style="width:100%;display:flex;flex-direction:column;gap:8px;">
+    <div class="beat-row">
+      <div class="beat-label a" id="label-a">3</div>
+      <div class="beat-pips" id="pips-a"></div>
+    </div>
+    <div class="beat-row">
+      <div class="beat-label b" id="label-b">2</div>
+      <div class="beat-pips" id="pips-b"></div>
+    </div>
+  </div>
+
+  <!-- Ratio selector -->
+  <div class="ratio-grid" id="ratio-grid"></div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="primary" id="btn-play" onclick="togglePlay()">▶ Start</button>
+    <div class="slider-row">
+      BPM
+      <input type="range" id="bpm-slider" min="40" max="200" value="80" oninput="updateBPM(this.value)">
+      <span id="bpm-val">80</span>
+    </div>
+    <div class="slider-row">
+      Vol
+      <input type="range" id="vol-slider" min="0" max="100" value="75" oninput="updateVol(this.value)">
+    </div>
+  </div>
+
+  <!-- Mute buttons -->
+  <div class="mute-row">
+    <button class="mute-btn" id="mute-a" onclick="toggleMute('a')">
+      <span class="mute-dot a"></span> Voice A
+    </button>
+    <button class="mute-btn" id="mute-b" onclick="toggleMute('b')">
+      <span class="mute-dot b"></span> Voice B
+    </button>
+  </div>
+
+  <!-- Info -->
+  <div class="info-panel" id="info-panel">
+    <div class="info-item">
+      <div class="info-key">Pattern</div>
+      <div class="info-val" id="info-pattern">—</div>
+    </div>
+    <div class="info-item">
+      <div class="info-key">Cycle length</div>
+      <div class="info-val" id="info-cycle">—</div>
+    </div>
+    <div class="info-item">
+      <div class="info-key">Coincidences / cycle</div>
+      <div class="info-val" id="info-coin">—</div>
+    </div>
+    <div class="info-item">
+      <div class="info-key">Musical context</div>
+      <div class="info-val" id="info-context">—</div>
+    </div>
+  </div>
+
+  <div class="cycle-counter" id="cycle-counter">Cycle — / —</div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  AUDIO ENGINE
+// ═══════════════════════════════════════════════════════
+let actx = null, masterGain = null;
+
+function initAudio() {
+  if (actx) return;
+  actx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = actx.createGain();
+  masterGain.gain.value = 0.75;
+  masterGain.connect(actx.destination);
+}
+
+// Two distinct timbres: A = high woodblock-ish, B = low clave-ish
+function playHit(voice, isCoin) {
+  if (!actx) return;
+  const now = actx.currentTime + 0.005;
+
+  if (voice === 'a') {
+    // High pitched click — triangle + noise burst
+    const freq = isCoin ? 1800 : 1400;
+    const osc  = actx.createOscillator();
+    const gain = actx.createGain();
+    const pan  = actx.createStereoPanner();
+    pan.pan.value = -0.5; // left
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    osc.connect(gain); gain.connect(pan); pan.connect(masterGain);
+    gain.gain.setValueAtTime(isCoin ? 0.9 : 0.65, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+    osc.start(now); osc.stop(now + 0.09);
+  } else {
+    // Low thud — sine + short decay
+    const freq = isCoin ? 320 : 220;
+    const osc  = actx.createOscillator();
+    const gain = actx.createGain();
+    const pan  = actx.createStereoPanner();
+    pan.pan.value = 0.5; // right
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.4, now + 0.1);
+    osc.connect(gain); gain.connect(pan); pan.connect(masterGain);
+    gain.gain.setValueAtTime(isCoin ? 0.9 : 0.65, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc.start(now); osc.stop(now + 0.16);
+  }
+
+  // Coincidence: center flash hit
+  if (isCoin) {
+    const osc2  = actx.createOscillator();
+    const gain2 = actx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.value = 880;
+    osc2.connect(gain2); gain2.connect(masterGain);
+    gain2.gain.setValueAtTime(0.3, now);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    osc2.start(now); osc2.stop(now + 0.13);
+  }
+}
+
+function updateVol(v) { if (masterGain) masterGain.gain.value = v / 100; }
+
+// ═══════════════════════════════════════════════════════
+//  RATIOS
+// ═══════════════════════════════════════════════════════
+const RATIOS = [
+  { a:2, b:3, name:'Hemiola',         context:'Foundation of swing & triplet feel; everywhere in jazz' },
+  { a:3, b:4, name:'3 against 4',     context:'Common in West African music; Monk, Coltrane, Nancarrow' },
+  { a:4, b:3, name:'4 against 3',     context:'Inverse hemiola; common in classical & jazz solos' },
+  { a:3, b:5, name:'3 against 5',     context:'Quintuplets over triplets; advanced Coltrane territory' },
+  { a:4, b:5, name:'4 against 5',     context:'Very advanced; used by Nancarrow & some ECM players' },
+  { a:2, b:5, name:'2 against 5',     context:'Rare — quintuplet feel against straight 2; Ligeti-esque' },
+  { a:5, b:3, name:'5 against 3',     context:'Quintuplets vs triplets; extreme displacement' },
+  { a:5, b:4, name:'5 against 4',     context:'Intense syncopation; M-Base, Steve Coleman influence' },
+  { a:3, b:7, name:'3 against 7',     context:'Very rare; septuplet vs triplet; Messiaen territory' },
+  { a:5, b:7, name:'5 against 7',     context:'Extremely advanced; academic / Nancarrow-level complexity' },
+  { a:2, b:7, name:'2 against 7',     context:'Septuplets against straight 2; rare in jazz, common in 20th c.' },
+  { a:4, b:7, name:'4 against 7',     context:'Maximum complexity — very few musicians internalize this' },
+];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+const state = {
+  playing: false,
+  ratioIdx: 0,
+  bpm: 80,
+  muteA: false,
+  muteB: false,
+  // Playback tracking
+  tickTimer: null,
+  // Each "super-tick" = 1/LCM of the cycle
+  // We subdivide 1 beat into lcm(a,b) ticks
+  tick: 0,         // current tick within cycle
+  totalTicks: 0,   // lcm(a,b)
+  cycleCount: 0,
+  // Hit positions (tick indices)
+  hitsA: [],
+  hitsB: [],
+  // Pip animation timers
+  pipTimers: {},
+};
+
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+function lcm(a, b) { return (a * b) / gcd(a, b); }
+
+function buildHits(a, b) {
+  const total = lcm(a, b);
+  const stepA = total / a;
+  const stepB = total / b;
+  const hA = [], hB = [];
+  for (let i = 0; i < a; i++) hA.push(Math.round(i * stepA));
+  for (let i = 0; i < b; i++) hB.push(Math.round(i * stepB));
+  return { hA, hB, total };
+}
+
+function getRatio() { return RATIOS[state.ratioIdx]; }
+
+function setupRatio() {
+  const r = getRatio();
+  const { hA, hB, total } = buildHits(r.a, r.b);
+  state.hitsA = hA;
+  state.hitsB = hB;
+  state.totalTicks = total;
+  state.tick = 0;
+  state.cycleCount = 0;
+
+  document.getElementById('disp-a').textContent = r.a;
+  document.getElementById('disp-b').textContent = r.b;
+  document.getElementById('ratio-name').textContent = `${r.name}`;
+  document.getElementById('label-a').textContent = r.a;
+  document.getElementById('label-b').textContent = r.b;
+
+  // Info panel
+  const coins = hA.filter(t => hB.includes(t)).length;
+  document.getElementById('info-pattern').textContent = `${r.a} : ${r.b}`;
+  document.getElementById('info-cycle').textContent = `${total} subdivisions`;
+  document.getElementById('info-coin').textContent = `${coins} (every ${total/coins} ticks)`;
+  document.getElementById('info-context').textContent = r.context;
+
+  buildPips();
+  updateCycleCounter();
+  drawNecklace(0);
+}
+
+function buildPips() {
+  const r = getRatio();
+  const pipsA = document.getElementById('pips-a');
+  const pipsB = document.getElementById('pips-b');
+  pipsA.innerHTML = ''; pipsB.innerHTML = '';
+  for (let i = 0; i < r.a; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip'; p.id = `pip-a-${i}`;
+    pipsA.appendChild(p);
+  }
+  for (let i = 0; i < r.b; i++) {
+    const p = document.createElement('div');
+    p.className = 'pip'; p.id = `pip-b-${i}`;
+    pipsB.appendChild(p);
+  }
+}
+
+function updateCycleCounter() {
+  document.getElementById('cycle-counter').textContent = `Cycle ${state.cycleCount + 1}`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CANVAS — NECKLACE
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const W = 480, H = 480, CX = W/2, CY = H/2;
+
+function drawNecklace(tick) {
+  ctx.clearRect(0, 0, W, H);
+  const r = getRatio();
+  const total = state.totalTicks;
+
+  // Background circle
+  ctx.beginPath();
+  ctx.arc(CX, CY, 200, 0, Math.PI*2);
+  ctx.strokeStyle = '#c8b89a';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Inner ring for B, outer ring for A
+  const radiusA = 175, radiusB = 140;
+
+  // Draw coincidence arcs
+  const coincidences = state.hitsA.filter(t => state.hitsB.includes(t));
+  coincidences.forEach(t => {
+    const angle = (t / total) * Math.PI * 2 - Math.PI / 2;
+    ctx.beginPath();
+    ctx.arc(CX + Math.cos(angle)*((radiusA+radiusB)/2), CY + Math.sin(angle)*((radiusA+radiusB)/2), 18, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(200,132,26,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  });
+
+  // Draw track rings
+  [radiusA, radiusB].forEach((rad, ri) => {
+    ctx.beginPath();
+    ctx.arc(CX, CY, rad, 0, Math.PI*2);
+    ctx.strokeStyle = ri===0 ? 'rgba(200,132,26,0.14)' : 'rgba(26,92,42,0.14)';
+    ctx.lineWidth = 40;
+    ctx.stroke();
+  });
+
+  // Dots for A
+  const angleA = (tick / total) * Math.PI * 2;
+  for (let i = 0; i < r.a; i++) {
+    const t = state.hitsA[i];
+    const ang = (t / total) * Math.PI * 2 - Math.PI / 2;
+    const isActive = t === tick || (t === 0 && tick === 0);
+    const isCoin = state.hitsB.includes(t);
+
+    ctx.beginPath();
+    ctx.arc(CX + Math.cos(ang)*radiusA, CY + Math.sin(ang)*radiusA, isActive ? 12 : 7, 0, Math.PI*2);
+    ctx.fillStyle = isCoin ? getComputedStyle(document.documentElement).getPropertyValue('--coin').trim()
+                           : (isActive ? '#1a1510' : 'rgba(200,132,26,0.75)');
+    ctx.fill();
+    if (isActive) {
+      ctx.beginPath();
+      ctx.arc(CX + Math.cos(ang)*radiusA, CY + Math.sin(ang)*radiusA, 18, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(200,132,26,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  // Dots for B
+  for (let i = 0; i < r.b; i++) {
+    const t = state.hitsB[i];
+    const ang = (t / total) * Math.PI * 2 - Math.PI / 2;
+    const isActive = t === tick;
+    const isCoin = state.hitsA.includes(t);
+
+    ctx.beginPath();
+    ctx.arc(CX + Math.cos(ang)*radiusB, CY + Math.sin(ang)*radiusB, isActive ? 12 : 7, 0, Math.PI*2);
+    ctx.fillStyle = isCoin ? '#1a1510'
+                           : (isActive ? '#1a1510' : 'rgba(26,92,42,0.75)');
+    ctx.fill();
+    if (isActive) {
+      ctx.beginPath();
+      ctx.arc(CX + Math.cos(ang)*radiusB, CY + Math.sin(ang)*radiusB, 18, 0, Math.PI*2);
+      ctx.strokeStyle = 'rgba(26,92,42,0.5)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }
+
+  // Rotating hands
+  const handAng = angleA - Math.PI/2;
+  // Hand A
+  ctx.beginPath();
+  ctx.moveTo(CX, CY);
+  ctx.lineTo(CX + Math.cos(handAng)*radiusA, CY + Math.sin(handAng)*radiusA);
+  ctx.strokeStyle = 'rgba(200,132,26,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // Hand B (same speed, same rotation — they move together, dots are the key)
+  ctx.beginPath();
+  ctx.moveTo(CX, CY);
+  ctx.lineTo(CX + Math.cos(handAng)*radiusB, CY + Math.sin(handAng)*radiusB);
+  ctx.strokeStyle = 'rgba(26,92,42,0.35)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(CX, CY, 4, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(122,106,86,0.8)';
+  ctx.fill();
+
+  // Labels
+  ctx.font = '700 12px "Libre Baskerville"';
+  ctx.fillStyle = 'rgba(200,132,26,0.85)';
+  ctx.textAlign = 'center';
+  ctx.fillText(`A  ${r.a}`, CX, CY - radiusA - 16);
+  ctx.fillStyle = 'rgba(26,92,42,0.85)';
+  ctx.fillText(`B  ${r.b}`, CX, CY - radiusB + 24);
+}
+
+// Animated rotation (continuous, not step-locked) for smooth visual
+let animFrame = null;
+let animStartTime = null;
+let animCycleMs = 2000; // duration of one full rotation in ms
+
+function startAnimation() {
+  animStartTime = null;
+  function loop(ts) {
+    if (!animStartTime) animStartTime = ts;
+    const elapsed = ts - animStartTime;
+    const progress = (elapsed % animCycleMs) / animCycleMs;
+    const tick = Math.floor(progress * state.totalTicks);
+    drawNecklace(tick);
+    animFrame = requestAnimationFrame(loop);
+  }
+  animFrame = requestAnimationFrame(loop);
+}
+
+function stopAnimation() {
+  if (animFrame) cancelAnimationFrame(animFrame);
+  drawNecklace(0);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PLAYBACK ENGINE
+// ═══════════════════════════════════════════════════════
+function getTickMs() {
+  // 1 beat = 60000/bpm ms; one cycle = lcm(a,b) ticks per... we define 1 beat = a ticks
+  // So tick duration = (60000/bpm) / a_value
+  const r = getRatio();
+  return (60000 / state.bpm) / r.a;
+}
+
+let hitCountA = 0, hitCountB = 0;
+
+function tick() {
+  const t = state.tick;
+  const r = getRatio();
+  const isHitA = state.hitsA.includes(t);
+  const isHitB = state.hitsB.includes(t);
+  const isCoin = isHitA && isHitB;
+
+  // Sound
+  if (isHitA && !state.muteA) playHit('a', isCoin);
+  if (isHitB && !state.muteB) playHit('b', isCoin);
+
+  // Pip animation
+  if (isHitA) {
+    const idx = state.hitsA.indexOf(t);
+    const pip = document.getElementById(`pip-a-${idx}`);
+    if (pip) {
+      pip.classList.add(isCoin ? 'coin' : 'hit-a');
+      clearTimeout(state.pipTimers[`a${idx}`]);
+      state.pipTimers[`a${idx}`] = setTimeout(() => pip.classList.remove('coin','hit-a'), 120);
+    }
+  }
+  if (isHitB) {
+    const idx = state.hitsB.indexOf(t);
+    const pip = document.getElementById(`pip-b-${idx}`);
+    if (pip) {
+      pip.classList.add(isCoin ? 'coin' : 'hit-b');
+      clearTimeout(state.pipTimers[`b${idx}`]);
+      state.pipTimers[`b${idx}`] = setTimeout(() => pip.classList.remove('coin','hit-b'), 120);
+    }
+  }
+
+  // Canvas coincidence flash
+  if (isCoin) {
+    const wrap = document.getElementById('canvas-wrap');
+    wrap.classList.remove('coincidence');
+    void wrap.offsetWidth;
+    wrap.classList.add('coincidence');
+    setTimeout(() => wrap.classList.remove('coincidence'), 320);
+  }
+
+  // Advance
+  state.tick = (state.tick + 1) % state.totalTicks;
+  if (state.tick === 0) {
+    state.cycleCount++;
+    updateCycleCounter();
+  }
+
+  state.tickTimer = setTimeout(tick, getTickMs());
+}
+
+function startPlayback() {
+  state.tick = 0;
+  state.cycleCount = 0;
+  updateCycleCounter();
+  // Sync animation to tempo
+  animCycleMs = getTickMs() * state.totalTicks;
+  startAnimation();
+  tick();
+}
+
+function stopPlayback() {
+  if (state.tickTimer) clearTimeout(state.tickTimer);
+  stopAnimation();
+}
+
+function togglePlay() {
+  initAudio();
+  state.playing = !state.playing;
+  const btn = document.getElementById('btn-play');
+  if (state.playing) {
+    btn.textContent = '■ Stop';
+    startPlayback();
+  } else {
+    btn.textContent = '▶ Start';
+    stopPlayback();
+  }
+}
+
+function updateBPM(v) {
+  state.bpm = parseInt(v);
+  document.getElementById('bpm-val').textContent = v;
+  if (state.playing) {
+    animCycleMs = getTickMs() * state.totalTicks;
+  }
+}
+
+function toggleMute(voice) {
+  if (voice === 'a') {
+    state.muteA = !state.muteA;
+    document.getElementById('mute-a').classList.toggle('muted', state.muteA);
+  } else {
+    state.muteB = !state.muteB;
+    document.getElementById('mute-b').classList.toggle('muted', state.muteB);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  RATIO SELECTOR
+// ═══════════════════════════════════════════════════════
+function buildRatioGrid() {
+  const grid = document.getElementById('ratio-grid');
+  RATIOS.forEach((r, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'ratio-btn' + (i === 0 ? ' selected' : '');
+    btn.textContent = `${r.a}:${r.b}`;
+    btn.onclick = () => selectRatio(i, btn);
+    grid.appendChild(btn);
+  });
+}
+
+function selectRatio(idx, btn) {
+  const was = state.playing;
+  if (was) stopPlayback();
+  state.ratioIdx = idx;
+  document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  setupRatio();
+  if (was) startPlayback();
+}
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+buildRatioGrid();
+setupRatio();
+</script>
+</body>
+</html>
